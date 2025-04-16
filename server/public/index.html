@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>온습도 모니터링</title>
+</head>
+
+<body>
+    <h2>현재 센서 상태</h2>
+    <p>🌡️ 온도: <span id="temp">-</span> ℃</p>
+    <p>💧 습도: <span id="humi">-</span> %</p>
+    <p>⏱️ 업데이트 시간: <span id="time">-</span></p>
+    <hr />
+    <p>🌀 에어컨 상태: <span id="aircon">-</span></p>
+    <p>🌪️ 환풍기 상태: <span id="fan">-</span></p>
+
+    <script>
+        async function fetchSensorData() {
+            try {
+                const res = await fetch('/api/sensor');
+                const data = await res.json();
+                document.getElementById('temp').innerText = data.temperature ?? '-';
+                document.getElementById('humi').innerText = data.humidity ?? '-';
+                document.getElementById('time').innerText = data.time ?? '-';
+                document.getElementById('aircon').innerText = data.aircon ?? '-';
+                document.getElementById('fan').innerText = data.fan ?? '-';
+            } catch (e) {
+                console.error("데이터 불러오기 실패", e);
+            }
+        }
+
+        setInterval(fetchSensorData, 2000);
+    </script>
+</body>
+
+</html>
