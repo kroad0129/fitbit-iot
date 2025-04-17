@@ -65,9 +65,9 @@ S3_BUCKET=your-s3-bucket-name
 ## 🧪 MQTT 테스트 명령어
 
 ```bash
-mosquitto_pub -t sensor/data -m "{\"temperature\":28.5,\"humidity\":60}"
+mosquitto_pub -t sensor/data -m "{\"temperature\":28,\"humidity\":70}"
 ```
-
+![alt text](image.png)
 ---
 
 ## ☁️ S3 저장 구조
