@@ -1,0 +1,10 @@
+[
+  {
+    "temperature": 28,
+    "humidity": 70,
+    "time": "오후 3:28:52",
+    "aircon": "켜짐",
+    "fan": "켜짐",
+    "timestamp": "2025-04-17T06:28:52.247Z"
+  }
+]
