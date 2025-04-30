@@ -1,7 +1,7 @@
 {
-    "mqtt_broker": "43.203.57.109",
+    "mqtt_broker": "localhost",
     "mqtt_port": 1883,
     "mqtt_topic": "sensor/data",
-    "dht_type": "DHT22",
+    "dht_type": "DHT11",
     "dht_pin": 4
 }

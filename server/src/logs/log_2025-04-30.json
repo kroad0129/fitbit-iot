@@ -1,0 +1,26 @@
+[
+  {
+    "temperature": 28,
+    "humidity": 70,
+    "time": "오후 7:14:16",
+    "aircon": "켜짐",
+    "fan": "켜짐",
+    "timestamp": "2025-04-30T10:14:16.332Z"
+  },
+  {
+    "temperature": 38,
+    "humidity": 70,
+    "time": "오후 7:14:49",
+    "aircon": "켜짐",
+    "fan": "켜짐",
+    "timestamp": "2025-04-30T10:14:49.048Z"
+  },
+  {
+    "temperature": 38,
+    "humidity": 70,
+    "time": "오후 7:18:18",
+    "aircon": "켜짐",
+    "fan": "켜짐",
+    "timestamp": "2025-04-30T10:18:18.860Z"
+  }
+]
