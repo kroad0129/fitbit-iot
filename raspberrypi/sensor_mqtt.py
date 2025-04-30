@@ -3,9 +3,6 @@ import Adafruit_DHT
 import time
 import json
 
-# ===============================
-# config.json에서 설정 읽기
-# ===============================
 with open("config.json", "r") as f:
     config = json.load(f)
 
@@ -15,15 +12,9 @@ MQTT_TOPIC = config["mqtt_topic"]
 DHT_PIN = config["dht_pin"]
 DHT_TYPE = Adafruit_DHT.DHT22 if config["dht_type"] == "DHT22" else Adafruit_DHT.DHT11
 
-# ===============================
-# MQTT 연결
-# ===============================
 client = mqtt.Client()
 client.connect(MQTT_BROKER, MQTT_PORT)
 
-# ===============================
-# 센서 루프
-# ===============================
 while True:
     humidity, temperature = Adafruit_DHT.read_retry(DHT_TYPE, DHT_PIN)
 
