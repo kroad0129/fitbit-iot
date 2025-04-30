@@ -15,6 +15,7 @@ DHT_TYPE = Adafruit_DHT.DHT22 if config["dht_type"] == "DHT22" else Adafruit_DHT
 client = mqtt.Client()
 client.connect(MQTT_BROKER, MQTT_PORT)
 
+
 while True:
     humidity, temperature = Adafruit_DHT.read_retry(DHT_TYPE, DHT_PIN)
 
