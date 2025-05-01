@@ -25,6 +25,7 @@ mqttClient.on('message', (topic, message) => {
             latestSensorData.fan = humi > 60 ? "켜짐" : "꺼짐";
 
             console.log("📡 센서값:", latestSensorData);
+            console.log("📥 수신된 메시지:", message.toString());
 
             const dateString = new Date().toISOString().slice(0, 10);
             const logFilename = `log_${dateString}.json`;
