@@ -16,6 +16,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'src', 'views', 'index.html'));
 });
 
-app.listen(port, () => {
-    console.log(`서버 실행 중: http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+    console.log(`서버 실행 중: http://15.165.203.122:${port}`);
 });
