@@ -3,17 +3,19 @@ const path = require('path');
 const app = express();
 const port = 3000;
 
-// MQTT 수신 처리 연결 (이 파일을 불러오기만 하면 동작함)
 require('./src/mqtt/receiver');
 
-// 라우터 등록
 const sensorRouter = require('./src/routes/sensor');
 app.use('/api', sensorRouter);
 
-// 정적 웹 제공
+// 정적 파일 제공
 app.use(express.static(path.join(__dirname, 'src', 'views')));
 
-// 서버 실행
+// 👉 루트 경로에서 index.html 직접 반환
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'src', 'views', 'index.html'));
+});
+
 app.listen(port, () => {
     console.log(`서버 실행 중: http://localhost:${port}`);
 });
