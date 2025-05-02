@@ -1,27 +1,44 @@
 const mqtt = require('mqtt');
+const { appendLogToS3 } = require('../utils/s3Uploader');
 const { latestSensorData } = require('../shared/state');
 
 const mqttClient = mqtt.connect('mqtt://localhost:1883');
 
 mqttClient.on('connect', () => {
     console.log('✅ MQTT 연결됨');
-    mqttClient.subscribe('sensor/data');
+    mqttClient.subscribe('sensor/data', (err) => {
+        if (err) console.error('❌ 토픽 구독 실패:', err);
+        else console.log('📡 sensor/data 토픽 구독 성공');
+    });
 });
 
 mqttClient.on('message', (topic, message) => {
     if (topic !== 'sensor/data') return;
 
-    try {
-        const parsed = JSON.parse(message.toString());
+    (async () => {
+        try {
+            const parsed = JSON.parse(message.toString());
+            const temp = parsed.temperature;
+            const humi = parsed.humidity;
 
-        latestSensorData.temperature = parsed.temperature;
-        latestSensorData.humidity = parsed.humidity;
-        latestSensorData.time = new Date().toLocaleTimeString();
-        latestSensorData.aircon = parsed.temperature > 27 ? '켜짐' : '꺼짐';
-        latestSensorData.fan = parsed.humidity > 60 ? '켜짐' : '꺼짐';
+            latestSensorData.temperature = temp;
+            latestSensorData.humidity = humi;
+            latestSensorData.time = new Date().toLocaleTimeString();
+            latestSensorData.aircon = temp > 27 ? '켜짐' : '꺼짐';
+            latestSensorData.fan = humi > 60 ? '켜짐' : '꺼짐';
 
-        console.log('📡 센서값:', latestSensorData);
-    } catch (e) {
-        console.error('❌ 메시지 처리 실패:', e.message);
-    }
+            const logData = {
+                ...latestSensorData,
+                timestamp: new Date().toISOString(),
+            };
+
+            const dateString = new Date().toISOString().slice(0, 10);
+            const s3Key = await appendLogToS3(logData, dateString);
+
+            console.log(`[${latestSensorData.time}] 🌡 ${temp}℃ 💧 ${humi}% 🌀 ${latestSensorData.aircon} 🌪 ${latestSensorData.fan}`);
+            console.log(`☁️ S3 누적 로그 저장됨: ${s3Key}`);
+        } catch (e) {
+            console.error('❌ MQTT 메시지 처리 중 오류 발생:', e);
+        }
+    })(); // 즉시 실행 async 함수 (IIFE)
 });
