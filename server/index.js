@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const app = express();
-const port = 8080;
+const port = 3000;
 
 // ✅ MQTT 수신 코드 (에러 감싸기)
 try {
