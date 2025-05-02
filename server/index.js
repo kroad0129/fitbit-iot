@@ -14,13 +14,8 @@ try {
 const sensorRouter = require('./src/routes/sensor');
 app.use('/api', sensorRouter);
 
-// ✅ 정적 파일 제공 (루트에 연결)
+// ✅ 정적 파일 제공 (index.html 포함)
 app.use('/', express.static(path.join(__dirname, 'src', 'views')));
-
-// ✅ 루트 경로에서 index.html 직접 반환
-app.get('/', (req, res) => {
-    res.sendFile(path.resolve(__dirname, 'src', 'views', 'index.html'));
-});
 
 // ✅ 서버 시작
 app.listen(port, '0.0.0.0', () => {
