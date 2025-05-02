@@ -1,34 +1,49 @@
 require('dotenv').config();
 const AWS = require('aws-sdk');
 
-// S3 클라이언트 생성
 const s3 = new AWS.S3({
     region: process.env.AWS_REGION,
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 });
 
 /**
- * S3에 JSON 데이터를 직접 업로드
- * @param {Object} jsonData - 업로드할 JSON 객체
- * @param {string} s3Key - S3 버킷 내 저장 경로 (예: logs/2024-05-02/log_2024-05-02T10:12:00.json)
- * @returns {Promise}
+ * 지정한 날짜의 로그 파일을 불러와 배열에 누적 저장
+ * @param {Object} logData - 새로 추가할 로그 데이터
+ * @param {string} dateString - 예: '2025-05-02'
  */
-function uploadLogFile(jsonData, s3Key) {
+async function appendLogToS3(logData, dateString) {
+    const s3Key = `logs/${dateString}/log_${dateString}.json`;
+
+    let logs = [];
+
+    try {
+        // 기존 로그 가져오기 (있으면)
+        const existing = await s3.getObject({
+            Bucket: process.env.S3_BUCKET,
+            Key: s3Key,
+        }).promise();
+
+        logs = JSON.parse(existing.Body.toString());
+    } catch (err) {
+        if (err.code !== 'NoSuchKey') {
+            throw err; // 예상치 못한 오류는 그대로 throw
+        }
+        // NoSuchKey는 최초 생성인 경우이므로 무시
+    }
+
+    logs.push(logData);
+
+    // 덮어쓰기
     const params = {
         Bucket: process.env.S3_BUCKET,
         Key: s3Key,
-        Body: JSON.stringify(jsonData, null, 2),
-        ContentType: 'application/json'
+        Body: JSON.stringify(logs, null, 2),
+        ContentType: 'application/json',
     };
 
-    return s3.upload(params).promise()
-        .then((data) => {
-            console.log("✅ S3 업로드 성공:", data.Location);
-        })
-        .catch((err) => {
-            console.error("❌ S3 업로드 실패:", err);
-        });
+    await s3.upload(params).promise();
+    return s3Key;
 }
 
-module.exports = { uploadLogFile };
+module.exports = { appendLogToS3 };
