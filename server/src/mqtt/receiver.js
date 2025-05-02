@@ -1,6 +1,4 @@
 const mqtt = require('mqtt');
-const fs = require('fs');
-const path = require('path');
 const { uploadLogFile } = require('../utils/s3Uploader');
 const { latestSensorData } = require('../shared/state');
 
@@ -34,27 +32,26 @@ mqttClient.on('message', (topic, message) => {
         latestSensorData.fan = humi > 60 ? '켜짐' : '꺼짐';
 
         console.log(
-            `[${latestSensorData.time}] 🌡 ${temp}℃  💧 ${humi}%  🌀 에어컨: ${latestSensorData.aircon}  🌪 환풍기: ${latestSensorData.fan}`
+            `[${latestSensorData.time}] 🌡 ${temp}℃  💧 ${humi}%  🌀 ${latestSensorData.aircon}  🌪 ${latestSensorData.fan}`
         );
 
-        const dateString = new Date().toISOString().slice(0, 10);
-        const logFilename = `log_${dateString}.json`;
-        const logPath = path.join(__dirname, '../logs', logFilename);
+        const date = new Date();
+        const dateString = date.toISOString().slice(0, 10);
+        const timestamp = date.toISOString();
+        const s3Key = `logs/${dateString}/log_${timestamp}.json`;
 
-        let logs = [];
-        if (fs.existsSync(logPath)) {
-            logs = JSON.parse(fs.readFileSync(logPath));
-        }
-
-        logs.push({
+        const logData = {
             ...latestSensorData,
-            timestamp: new Date().toISOString(),
-        });
+            timestamp
+        };
 
-        fs.writeFileSync(logPath, JSON.stringify(logs, null, 2));
-
-        const s3Key = `logs/${dateString}/${logFilename}`;
-        uploadLogFile(logPath, s3Key);
+        uploadLogFile(logData, s3Key)
+            .then(() => {
+                console.log(`☁️ S3 업로드 완료: ${s3Key}`);
+            })
+            .catch(err => {
+                console.error('❌ S3 업로드 실패:', err);
+            });
 
     } catch (e) {
         console.error('❌ JSON 파싱 실패:', e);
