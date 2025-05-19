@@ -1,12 +1,10 @@
 import paho.mqtt.client as mqtt
 import time
 import json
-import random  # 테스트용 임시 데이터 생성
 from datetime import datetime
 import RPi.GPIO as GPIO
 import board
 import adafruit_dht
-import adafruit_mq135
 
 # GPIO 설정
 GPIO.setmode(GPIO.BCM)
@@ -14,8 +12,9 @@ GPIO.setmode(GPIO.BCM)
 # DHT22 온습도 센서 설정
 dht = adafruit_dht.DHT22(board.D4)  # GPIO 4번 핀
 
-# MQ-135 가스 센서 설정
-mq135 = adafruit_mq135.MQ135(board.D18)  # GPIO 18번 핀
+# MQ-135 가스 센서 설정 (디지털 출력)
+GAS_SENSOR_PIN = 18  # GPIO 18번 핀
+GPIO.setup(GAS_SENSOR_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # 풀업 저항 활성화
 
 # MQTT 브로커 설정
 MQTT_BROKER = "192.168.234.35"  # MQTT 브로커 주소
@@ -44,20 +43,13 @@ def read_sensors():
         temperature = dht.temperature
         humidity = dht.humidity
         
-        # MQ-135 가스 센서 읽기
-        gas_resistance = mq135.resistance
-        gas_ppm = mq135.raw_adc
-        
-        # 가스 레벨을 0-100 사이의 값으로 정규화
-        # MQ-135의 일반적인 저항 범위는 10kΩ ~ 100kΩ
-        gas_level = min(100, max(0, (gas_resistance - 10000) / 900))
+        # MQ-135 가스 센서 읽기 (디지털 출력)
+        gas_detected = GPIO.input(GAS_SENSOR_PIN) == GPIO.LOW  # LOW일 때 가스 감지
         
         return {
             "temperature": round(temperature, 1) if temperature is not None else 0,
             "humidity": round(humidity, 1) if humidity is not None else 0,
-            "gasLevel": round(gas_level, 1),
-            "gasResistance": round(gas_resistance, 1),
-            "gasPPM": round(gas_ppm, 1),
+            "gasDetected": gas_detected,
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -65,9 +57,7 @@ def read_sensors():
         return {
             "temperature": 0,
             "humidity": 0,
-            "gasLevel": 0,
-            "gasResistance": 0,
-            "gasPPM": 0,
+            "gasDetected": False,
             "timestamp": datetime.now().isoformat()
         }
 
