@@ -1,73 +1,41 @@
-# Welcome to your Lovable project
+# 안녕케어허브 (Annyeong Care Hub)
 
-## Project info
+## 프로젝트 소개
+안녕케어허브는 라즈베리파이를 활용한 실시간 환경 모니터링 시스템입니다.
 
-**URL**: https://lovable.dev/projects/37ffe4c5-6119-4d1d-8caa-edd959d3e5cc
+## 주요 기능
+- 실시간 온도/습도 모니터링
+- 가스 감지 및 알림
+- 웹 기반 대시보드
 
-## How can I edit this code?
+## 기술 스택
+- Frontend: React, TypeScript, Vite
+- Backend: Node.js, Express
+- IoT: Raspberry Pi, MQTT
+- 센서: DHT22(온습도), MQ-135(가스)
 
-There are several ways of editing your application.
+## 설치 및 실행 방법
 
-**Use Lovable**
+### 서버 실행
+```bash
+cd server
+npm install
+node server.js
+```
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/37ffe4c5-6119-4d1d-8caa-edd959d3e5cc) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### 프론트엔드 실행
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### 라즈베리파이 설정
+```bash
+# 필요한 라이브러리 설치
+sudo apt-get update
+sudo apt-get install python3-pip
+pip3 install paho-mqtt RPi.GPIO Adafruit_DHT adafruit-circuitpython-mq135
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/37ffe4c5-6119-4d1d-8caa-edd959d3e5cc) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+# 센서 데이터 수집 및 전송
+python3 raspberry_pi_client.py
+```

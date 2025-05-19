@@ -19,7 +19,7 @@ DHT_PIN = 4  # GPIO 4번 핀
 mq135 = adafruit_mq135.MQ135(board.D18)  # GPIO 18번 핀
 
 # MQTT 브로커 설정
-MQTT_BROKER = "localhost"  # MQTT 브로커 주소
+MQTT_BROKER = "192.168.234.35"  # MQTT 브로커 주소
 MQTT_PORT = 1883
 MQTT_TOPIC = "sensors/data"
 
