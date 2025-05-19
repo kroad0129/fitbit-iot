@@ -5,6 +5,8 @@ from datetime import datetime
 import RPi.GPIO as GPIO
 import board
 import adafruit_dht
+import adafruit_ads1x15.ads1115 as ADS
+from adafruit_ads1x15.analog_in import AnalogIn
 
 # GPIO 설정
 GPIO.setmode(GPIO.BCM)
@@ -12,9 +14,10 @@ GPIO.setmode(GPIO.BCM)
 # DHT22 온습도 센서 설정
 dht = adafruit_dht.DHT22(board.D4)  # GPIO 4번 핀
 
-# MQ-135 가스 센서 설정 (디지털 출력)
-GAS_SENSOR_PIN = 18  # GPIO 18번 핀
-GPIO.setup(GAS_SENSOR_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # 풀업 저항 활성화
+# ADS1115 설정
+i2c = board.I2C()  # GPIO 2(SDA), 3(SCL) 핀 사용
+ads = ADS.ADS1115(i2c)
+channel = AnalogIn(ads, ADS.P0)  # AIN0 사용
 
 # MQTT 브로커 설정
 MQTT_BROKER = "192.168.234.35"  # MQTT 브로커 주소
@@ -43,13 +46,26 @@ def read_sensors():
         temperature = dht.temperature
         humidity = dht.humidity
         
-        # MQ-135 가스 센서 읽기 (디지털 출력)
-        gas_detected = GPIO.input(GAS_SENSOR_PIN) == GPIO.LOW  # LOW일 때 가스 감지
+        # MQ-135 가스 센서 읽기 (아날로그 값)
+        gas_value = channel.value
+        gas_voltage = channel.voltage
+        
+        # 가스 센서 값 출력
+        print("\n=== MQ-135 가스 센서 값 ===")
+        print(f"ADC 값: {gas_value}")
+        print(f"전압: {gas_voltage:.3f}V")
+        print("==========================\n")
+        
+        # 가스 감지 여부 판단 (전압값이 임계값보다 높으면 가스 감지)
+        GAS_THRESHOLD = 2.0  # 전압 임계값 (조정 필요)
+        gas_detected = gas_voltage > GAS_THRESHOLD
         
         return {
             "temperature": round(temperature, 1) if temperature is not None else 0,
             "humidity": round(humidity, 1) if humidity is not None else 0,
             "gasDetected": gas_detected,
+            "gasValue": gas_value,
+            "gasVoltage": round(gas_voltage, 3),
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -58,6 +74,8 @@ def read_sensors():
             "temperature": 0,
             "humidity": 0,
             "gasDetected": False,
+            "gasValue": 0,
+            "gasVoltage": 0,
             "timestamp": datetime.now().isoformat()
         }
 
