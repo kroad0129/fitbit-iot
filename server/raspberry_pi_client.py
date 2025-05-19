@@ -20,7 +20,7 @@ ads = ADS.ADS1115(i2c)
 channel = AnalogIn(ads, ADS.P0)  # AIN0 사용
 
 # MQTT 브로커 설정
-MQTT_BROKER = "192.168.234.35"  # MQTT 브로커 주소
+MQTT_BROKER = "192.168.7.152"  # MQTT 브로커 주소
 MQTT_PORT = 1883
 MQTT_TOPIC = "sensors/data"
 
