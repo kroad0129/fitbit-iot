@@ -5,6 +5,8 @@ const http = require('http');
 const WebSocket = require('ws');
 const { OpenAI } = require('openai');
 require('dotenv').config();
+const axios = require('axios');
+
 
 const app = express();
 const server = http.createServer(app);
@@ -15,6 +17,15 @@ const port = process.env.PORT || 4000;
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
+
+const CLIENT_ID = process.env.FITBIT_CLIENT_ID;
+const CLIENT_SECRET = process.env.FITBIT_CLIENT_SECRET;
+const REDIRECT_URI = process.env.FITBIT_REDIRECT_URI;
+
+const getTodayDateString = () => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+};
 
 // 미들웨어 설정
 app.use(cors());
@@ -165,6 +176,133 @@ ${recentData.map(d => `
   } catch (error) {
     console.error('알림 분석 중 오류:', error);
     res.status(500).json({ error: '알림 분석 실패' });
+  }
+});
+
+// Fitbit 토큰 저장소 (실제 프로덕션에서는 DB를 사용해야 합니다)
+let fitbitTokens = {};
+
+app.get("/api/fitbit/auth-url", (req, res) => {
+  // const scope = "profile activity";
+  const scope = "profile activity heartrate sleep";// stress
+  // console.log(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+  const authUrl = `https://www.fitbit.com/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
+    REDIRECT_URI
+  )}&scope=${encodeURIComponent(scope)}&expires_in=604800`;
+  res.json({ url: authUrl });
+});
+
+
+app.get("/api/fitbit/callback", async (req, res) => {
+  const code = req.query.code;
+
+  try {
+    // 1. access_token 요청
+    const tokenResponse = await axios.post(
+      "https://api.fitbit.com/oauth2/token",
+      new URLSearchParams({
+        client_id: process.env.FITBIT_CLIENT_ID,
+        grant_type: "authorization_code",
+        redirect_uri: REDIRECT_URI,
+        code,
+      }),
+      {
+        headers: {
+          Authorization:
+            "Basic " + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64"),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    const { access_token, refresh_token } = tokenResponse.data;
+
+    // 2. Fitbit API 호출 (병렬 처리)
+    const date = getTodayDateString();
+
+    const [profileRes, heartRes, stepsRes, sleepRes] = await Promise.all([
+      axios.get("https://api.fitbit.com/1/user/-/profile.json", {
+        headers: { Authorization: `Bearer ${access_token}` },
+      }),
+      axios.get(`https://api.fitbit.com/1/user/-/activities/heart/date/${date}/1d.json`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      }),
+      axios.get(`https://api.fitbit.com/1/user/-/activities/date/${date}.json`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      }),
+      axios.get(`https://api.fitbit.com/1.2/user/-/sleep/date/${date}.json`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      }),
+    ]);
+
+    const userData = {
+      profile: profileRes.data,
+      heartRate: heartRes.data,
+      activity: stepsRes.data,
+      sleep: sleepRes.data,
+    };
+
+    // 토큰 저장
+    fitbitTokens[profileRes.data.user.encodedId] = {
+      access_token,
+      refresh_token,
+      userData
+    };
+
+    // 메인 페이지로 리다이렉트
+    res.redirect("http://localhost:3000/");
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.redirect("http://localhost:3000/?error=" + encodeURIComponent(err.message));
+  }
+});
+
+// Fitbit 데이터 조회 엔드포인트
+app.get("/api/fitbit/data", async (req, res) => {
+  try {
+    // 현재는 첫 번째 사용자의 데이터만 반환 (실제로는 세션 기반으로 구현해야 함)
+    const userId = Object.keys(fitbitTokens)[0];
+    if (!userId) {
+      return res.status(401).json({ error: "Fitbit에 로그인되어 있지 않습니다." });
+    }
+
+    const { access_token, userData } = fitbitTokens[userId];
+    const date = getTodayDateString();
+
+    // 최신 데이터 가져오기
+    const [profileRes, heartRes, stepsRes, sleepRes] = await Promise.all([
+      axios.get("https://api.fitbit.com/1/user/-/profile.json", {
+        headers: { Authorization: `Bearer ${access_token}` },
+      }),
+      axios.get(`https://api.fitbit.com/1/user/-/activities/heart/date/${date}/1d.json`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      }),
+      axios.get(`https://api.fitbit.com/1/user/-/activities/date/${date}.json`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      }),
+      axios.get(`https://api.fitbit.com/1.2/user/-/sleep/date/${date}.json`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      }),
+    ]);
+
+    // 최신 데이터로 업데이트
+    const updatedData = {
+      profile: profileRes.data,
+      heartRate: heartRes.data,
+      activity: stepsRes.data,
+      sleep: sleepRes.data,
+    };
+
+    // 토큰 저장소 업데이트
+    fitbitTokens[userId] = {
+      ...fitbitTokens[userId],
+      userData: updatedData
+    };
+
+    res.json(updatedData);
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ error: "오류 발생: " + err.message });
   }
 });
 

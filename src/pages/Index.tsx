@@ -9,6 +9,24 @@ import { MonitoringProvider, useMonitoring } from "@/contexts/MonitoringContext"
 import { MessageProvider } from "@/contexts/MessageContext";
 import axios from "axios";
 
+const handleFitbitLogin = async () => {
+  try {
+    // const response = await axios.get("/api/fitbit/auth-url");
+    const response = await axios.get("http://localhost:4000/api/fitbit/auth-url");
+    const authUrl = response.data.url;
+    console.log(authUrl);
+    window.location.href = authUrl; // Fitbit 로그인 페이지로 이동
+  } catch (error) {
+    console.error("Fitbit 인증 URL 요청 실패:", error);
+    toast({
+      title: "인증 오류",
+      description: "Fitbit 로그인 URL을 불러올 수 없습니다.",
+      variant: "destructive",
+    });
+  }
+};
+
+
 const MonitoringContent = () => {
   const { addData, clearHistory } = useMonitoring();
   const [refreshCount, setRefreshCount] = useState(0);
@@ -19,6 +37,45 @@ const MonitoringContent = () => {
     heartRate: 72,
     stressLevel: 32,
   });
+  const [fitbitUser, setFitbitUser] = useState(null);
+
+  // Fitbit 로그인 상태 확인
+  useEffect(() => {
+    const checkFitbitLogin = async () => {
+      try {
+        const response = await axios.get("http://localhost:4000/api/fitbit/data");
+        if (response.data.profile?.user?.displayName) {
+          setFitbitUser(response.data.profile.user.displayName);
+        }
+      } catch (error) {
+        console.log("Fitbit 로그인 필요");
+        setFitbitUser(null);
+      }
+      
+
+      try {
+        // Fitbit 데이터 가져오기
+        const fitbitRes = await axios.get("http://localhost:4000/api/fitbit/data");
+        const fitbitData = fitbitRes.data;
+        console.log(fitbitData);
+        // Fitbit 데이터를 상태에 반영
+        setData(prevData => ({
+          ...prevData,
+          heartRate: fitbitData.heartRate?.["activities-heart"]?.[0]?.value?.restingHeartRate || prevData.heartRate,
+        }));
+
+        // Fitbit 사용자 정보가 있으면 상태 업데이트
+        if (fitbitData.profile?.user?.displayName) {
+          setFitbitUser(fitbitData.profile.user.displayName);
+        }
+      } catch (error) {
+        console.error("Fitbit 데이터 갱신 실패:", error.response?.data || error.message);
+        setFitbitUser(null);
+      }
+    };
+
+    checkFitbitLogin();
+  }, []);
 
   // WebSocket 연결
   useEffect(() => {
@@ -28,15 +85,15 @@ const MonitoringContent = () => {
       console.log('WebSocket 연결됨');
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = async (event) => {
       const message = JSON.parse(event.data);
       if (message.type === 'sensor_update') {
-        // 새로운 데이터로 상태 업데이트
+        // 새로운 센서 데이터로 상태 업데이트
         setData(prevData => ({
           ...prevData,
           temperature: message.data.temperature,
           humidity: message.data.humidity,
-          gasDetection: message.data.gasLevel > 70 ? "위험" : "안전"
+          gasDetection: message.data.gasLevel > 70 ? "위험" : "안전"          
         }));
         
         // 알림 표시
@@ -98,6 +155,18 @@ const MonitoringContent = () => {
               {refreshCount}회 갱신됨
             </span>
           </p>
+          {fitbitUser ? (
+            <div className="mt-4 text-green-600 font-medium">
+              {fitbitUser}님, Fitbit으로 로그인됨
+            </div>
+          ) : (
+            <button
+              onClick={handleFitbitLogin}
+              className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              Fitbit 로그인
+            </button>
+          )}
         </header>
 
         <div className="grid grid-cols-1 gap-8">
