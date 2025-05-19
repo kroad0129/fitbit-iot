@@ -12,9 +12,14 @@ MQTT_TOPIC = config["mqtt_topic"]
 DHT_PIN = config["dht_pin"]
 DHT_TYPE = Adafruit_DHT.DHT22 if config["dht_type"] == "DHT22" else Adafruit_DHT.DHT11
 
-client = mqtt.Client()
+client = mqtt.Client(client_id="raspberry")
+client.tls_set(
+    ca_certs="AmazonRootCA1.pem",
+    certfile="device-cert.pem.crt",
+    keyfile="private.pem.key"
+)
 client.connect(MQTT_BROKER, MQTT_PORT)
-
+client.loop_start()
 
 while True:
     humidity, temperature = Adafruit_DHT.read_retry(DHT_TYPE, DHT_PIN)
