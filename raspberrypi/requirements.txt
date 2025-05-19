@@ -1,3 +1,0 @@
-# 설치에 필요한 패키지 목록
-paho-mqtt
-Adafruit_DHT
