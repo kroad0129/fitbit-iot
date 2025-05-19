@@ -6,7 +6,8 @@ from datetime import datetime
 import RPi.GPIO as GPIO
 import board
 import adafruit_dht
-import adafruit_mq135
+import adafruit_ads1x15.ads1115 as ADS
+from adafruit_ads1x15.analog_in import AnalogIn
 
 # GPIO 설정
 GPIO.setmode(GPIO.BCM)
@@ -14,8 +15,10 @@ GPIO.setmode(GPIO.BCM)
 # DHT22 온습도 센서 설정
 dht = adafruit_dht.DHT22(board.D4)  # GPIO 4번 핀
 
-# MQ-135 가스 센서 설정
-mq135 = adafruit_mq135.MQ135(board.D18)  # GPIO 18번 핀
+# ADS1115 ADC 설정
+i2c = board.I2C()
+ads = ADS.ADS1115(i2c)
+chan = AnalogIn(ads, ADS.P0)  # A0 핀 사용
 
 # MQTT 브로커 설정
 MQTT_BROKER = "192.168.234.35"  # MQTT 브로커 주소
@@ -44,20 +47,20 @@ def read_sensors():
         temperature = dht.temperature
         humidity = dht.humidity
         
-        # MQ-135 가스 센서 읽기
-        gas_resistance = mq135.resistance
-        gas_ppm = mq135.raw_adc
+        # MQ-135 가스 센서 읽기 (ADS1115 사용)
+        gas_value = chan.value
+        gas_voltage = chan.voltage
         
         # 가스 레벨을 0-100 사이의 값으로 정규화
-        # MQ-135의 일반적인 저항 범위는 10kΩ ~ 100kΩ
-        gas_level = min(100, max(0, (gas_resistance - 10000) / 900))
+        # ADS1115는 16비트 ADC (0-65535)
+        gas_level = min(100, max(0, (gas_value / 65535) * 100))
         
         return {
             "temperature": round(temperature, 1) if temperature is not None else 0,
             "humidity": round(humidity, 1) if humidity is not None else 0,
             "gasLevel": round(gas_level, 1),
-            "gasResistance": round(gas_resistance, 1),
-            "gasPPM": round(gas_ppm, 1),
+            "gasValue": round(gas_value, 1),
+            "gasVoltage": round(gas_voltage, 3),
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -66,8 +69,8 @@ def read_sensors():
             "temperature": 0,
             "humidity": 0,
             "gasLevel": 0,
-            "gasResistance": 0,
-            "gasPPM": 0,
+            "gasValue": 0,
+            "gasVoltage": 0,
             "timestamp": datetime.now().isoformat()
         }
 
