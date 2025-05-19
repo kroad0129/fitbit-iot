@@ -1,5 +1,5 @@
 {
-    "mqtt_broker": "192.168.137.1",
+    "mqtt_broker": "au3w4b2r0pnz5-ats.iot.ap-northeast-2.amazonaws.com",
     "mqtt_port": 1883,
     "mqtt_topic": "sensor/data",
     "dht_type": "DHT11",
