@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Thermometer, Droplet, AlarmSmoke, HeartPulse, Activity } from "lucide-react";
-import { fetchSensorData } from "@/api/sensor"; // ✅ 이미 정의된 fetch 함수 사용
+import { fetchSensorData } from "@/api/sensor";
 
 const MonitoringPanel = () => {
   const [data, setData] = useState({
@@ -12,15 +12,67 @@ const MonitoringPanel = () => {
     stressLevel: 0
   });
 
+  const [alarmTimes, setAlarmTimes] = useState<string[]>(["08:00"]);
+  const [triggeredToday, setTriggeredToday] = useState<{ [key: string]: boolean }>({});
+
+  const prevDataRef = useRef(data);
+
   useEffect(() => {
     const load = async () => {
       const sensor = await fetchSensorData();
       setData(sensor);
     };
     load();
-    const interval = setInterval(load, 5000); // 5초마다 호출
+    const interval = setInterval(load, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // 🔁 알람 감지 및 TTS
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+      alarmTimes.forEach((time) => {
+        if (hhmm === time && !triggeredToday[time]) {
+          const message = `현재 시간은 ${time}입니다. 온도는 ${data.temperature}도, 습도는 ${data.humidity}퍼센트, 심박수는 ${data.heartRate}입니다.`;
+          const utterance = new SpeechSynthesisUtterance(message);
+          utterance.lang = "ko-KR";
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utterance);
+          setTriggeredToday((prev) => ({ ...prev, [time]: true }));
+        }
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [alarmTimes, triggeredToday, data]);
+
+  // 🌙 자정마다 알람 리셋
+  useEffect(() => {
+    const midnightReset = setInterval(() => {
+      const now = new Date();
+      if (now.getHours() === 0 && now.getMinutes() === 0) {
+        setTriggeredToday({});
+      }
+    }, 60 * 1000);
+    return () => clearInterval(midnightReset);
+  }, []);
+
+  const addAlarm = (newTime: string) => {
+    if (!alarmTimes.includes(newTime)) {
+      setAlarmTimes([...alarmTimes, newTime].sort());
+    }
+  };
+
+  const removeAlarm = (time: string) => {
+    setAlarmTimes(alarmTimes.filter((t) => t !== time));
+    setTriggeredToday((prev) => {
+      const copy = { ...prev };
+      delete copy[time];
+      return copy;
+    });
+  };
 
   return (
     <Card className="shadow-lg">
@@ -28,8 +80,33 @@ const MonitoringPanel = () => {
         <CardTitle className="text-2xl text-center">실시간 모니터링</CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* 🕒 알람 설정 */}
+        <div className="mb-6">
+          <label className="font-semibold">알람 시간 추가</label>
+          <div className="flex gap-2 mt-2 items-center">
+            <input
+              type="time"
+              onChange={(e) => addAlarm(e.target.value)}
+              className="border px-3 py-2 rounded"
+            />
+          </div>
+          <div className="mt-4">
+            {alarmTimes.map((time) => (
+              <div key={time} className="flex items-center gap-2 text-sm">
+                <span className="text-lg">{time}</span>
+                <button
+                  className="text-red-500 hover:underline"
+                  onClick={() => removeAlarm(time)}
+                >
+                  삭제
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
 
+        {/* 센서 카드 UI */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* 온도 */}
           <Card className="bg-gradient-to-br from-orange-50 to-white border-2 hover:border-orange-200 transition-all">
             <CardContent className="pt-6 pb-4 flex flex-col items-center">
