@@ -152,7 +152,7 @@ const MonitoringContent = () => {
             />
           )}
           <MessageHistory />
-          <MonitoringHistory />
+          {/* <MonitoringHistory /> */}
         </div>
       </div>
     </div>

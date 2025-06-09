@@ -35,7 +35,7 @@ const MonitoringPanel = () => {
 
       alarmTimes.forEach((time) => {
         if (hhmm === time && !triggeredToday[time]) {
-          const message = `현재 시간은 ${time}입니다. 온도는 ${data.temperature}도, 습도는 ${data.humidity}퍼센트, 심박수는 ${data.heartRate}입니다.`;
+          const message = `현재 시간은 ${time}입니다. 온도는 ${data.temperature}도, 습도는 ${data.humidity}퍼센트, 심박수는 ${data.heartRate}입니다. 가스 상태는 ${data.gasDetection}입니다.`;
           const utterance = new SpeechSynthesisUtterance(message);
           utterance.lang = "ko-KR";
           window.speechSynthesis.cancel();
