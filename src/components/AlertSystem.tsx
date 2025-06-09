@@ -1,7 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Zap, Bell, BellRing, X } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useMessages } from "@/contexts/MessageContext";
@@ -21,33 +27,45 @@ interface AlertSystemProps {
 }
 
 const AlertSystem = ({ abnormalData }: AlertSystemProps) => {
-  const [secondsLeft, setSecondsLeft] = useState(30);
+  const [secondsLeft, setSecondsLeft] = useState(10);
   const [alertSent, setAlertSent] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(true);
-  const [aiAnalysis, setAiAnalysis] = useState<{
-    analysis: string;
-    message: string;
-    urgency: '긴급' | '주의' | '관찰';
-  } | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { addMessage } = useMessages();
   const { history } = useMonitoring();
 
   const abnormalReasons = abnormalData.abnormalReasons || [];
 
-  // 심각한 이상 반응인지 확인
+  const prevAbnormalRef = useRef(false);
+
   const isSeriousAbnormal = () => {
-    return abnormalData.gasDetection === "위험" || // 가스 감지는 항상 심각
-           abnormalData.heartRate > 90 || abnormalData.heartRate < 50 || // 심박수 이상은 심각
-           abnormalData.stressLevel > 70; // 높은 스트레스는 심각
+    return (
+      abnormalData.gasDetection === "위험" ||
+      abnormalData.heartRate > 120 ||
+      abnormalData.heartRate < 50 ||
+      abnormalData.stressLevel > 70 ||
+      abnormalData.temperature > 30 ||
+      abnormalData.humidity > 70
+    );
   };
 
-  // Countdown timer effect
+  useEffect(() => {
+    const isNowAbnormal = isSeriousAbnormal();
+
+    // 새로 비정상 상태 진입 시에만 다이얼로그 트리거
+    if (isNowAbnormal && !prevAbnormalRef.current) {
+      setDialogOpen(true);
+      setSecondsLeft(10);
+      setAlertSent(false);
+    }
+
+    prevAbnormalRef.current = isNowAbnormal;
+  }, [abnormalData]);
+
   useEffect(() => {
     if (secondsLeft > 0 && !alertSent && dialogOpen) {
       const timerId = setTimeout(() => {
-        setSecondsLeft(secondsLeft - 1);
+        setSecondsLeft((prev) => prev - 1);
       }, 1000);
-      
       return () => clearTimeout(timerId);
     } else if (secondsLeft === 0 && !alertSent && dialogOpen) {
       sendAlert();
@@ -56,45 +74,37 @@ const AlertSystem = ({ abnormalData }: AlertSystemProps) => {
 
   const sendAlert = async () => {
     try {
-      // 서버 API 호출
-      const response = await fetch('http://localhost:4000/api/analyze-alert', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ history: history.data })
-      });
+      const response = await fetch(
+        "https://uug2wtk3g0.execute-api.ap-northeast-2.amazonaws.com/monitoring/alert",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subject: "건강 이상 감지",
+            reason: abnormalReasons.join(", ") || "이상 감지"
+          })
+        }
+      );
 
-      if (!response.ok) {
-        throw new Error('서버 응답 오류');
-      }
-
-      const result = await response.json();
-      const analysis = {
-        analysis: result.analysis,
-        message: result.recommendations[0],
-        urgency: result.urgency
-      };
-      setAiAnalysis(analysis);
-
-      // 메시지 저장
-      addMessage({
-        message: analysis.message,
-        urgency: analysis.urgency,
-        abnormalConditions: abnormalReasons
-      });
+      if (!response.ok) throw new Error("Lambda 응답 오류");
 
       setAlertSent(true);
+      addMessage({
+        message: "임계값 초과로 간병인에게 이메일이 전송되었습니다.",
+        urgency: "긴급",
+        abnormalConditions: abnormalReasons,
+      });
+
       toast({
-        title: "간병인에게 알림이 전송되었습니다",
-        description: analysis.message,
+        title: "📨 이메일 전송됨",
+        description: "간병인에게 알림이 전송되었습니다.",
         duration: 5000,
       });
     } catch (error) {
-      console.error('알림 분석 실패:', error);
+      console.error("알림 전송 실패:", error);
       toast({
-        title: "알림 전송 실패",
-        description: "알림 분석 중 오류가 발생했습니다.",
+        title: "❌ 이메일 전송 실패",
+        description: "서버 요청 중 문제가 발생했습니다.",
         variant: "destructive",
         duration: 5000,
       });
@@ -105,29 +115,15 @@ const AlertSystem = ({ abnormalData }: AlertSystemProps) => {
     setDialogOpen(false);
     toast({
       title: "알림이 취소되었습니다",
-      description: "정상으로 판단하셨습니다.",
+      description: "사용자가 정상으로 판단했습니다.",
       duration: 3000,
     });
-  };
-
-  const getUrgencyColor = (urgency: '긴급' | '주의' | '관찰') => {
-    switch (urgency) {
-      case '긴급':
-        return 'text-red-600';
-      case '주의':
-        return 'text-yellow-600';
-      case '관찰':
-        return 'text-blue-600';
-      default:
-        return 'text-gray-600';
-    }
   };
 
   return (
     <>
       {isSeriousAbnormal() && (
         <>
-          {/* Alert banner */}
           <Alert variant="destructive" className="border-4 border-destructive">
             <Zap className="h-8 w-8" />
             <AlertTitle className="text-2xl font-bold mb-2">이상 감지됨!</AlertTitle>
@@ -136,23 +132,13 @@ const AlertSystem = ({ abnormalData }: AlertSystemProps) => {
               <ul className="list-disc pl-5 mb-4 space-y-1">
                 {abnormalReasons.length > 0
                   ? abnormalReasons.map((reason, index) => (
-                      <li key={index}>{reason} 이상</li>
-                    ))
+                    <li key={index}>{reason} 이상</li>
+                  ))
                   : <li>이상 항목 없음</li>}
               </ul>
-              {aiAnalysis && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <p className="font-semibold mb-2">AI 분석 결과:</p>
-                  <p className="mb-2">{aiAnalysis.analysis}</p>
-                  <p className={`font-bold ${getUrgencyColor(aiAnalysis.urgency)}`}>
-                    긴급도: {aiAnalysis.urgency}
-                  </p>
-                </div>
-              )}
             </AlertDescription>
           </Alert>
 
-          {/* Alert countdown dialog */}
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
@@ -161,7 +147,7 @@ const AlertSystem = ({ abnormalData }: AlertSystemProps) => {
                   이상 징후 감지
                 </DialogTitle>
                 <DialogDescription className="text-lg">
-                  {secondsLeft}초 후에 자동으로 간병인에게 알림이 전송됩니다.
+                  {secondsLeft}초 후에 간병인에게 이메일이 전송됩니다.
                 </DialogDescription>
               </DialogHeader>
               <div className="flex justify-end space-x-4 mt-4">
@@ -178,7 +164,7 @@ const AlertSystem = ({ abnormalData }: AlertSystemProps) => {
                   className="flex items-center bg-red-600 hover:bg-red-700"
                 >
                   <Bell className="mr-2 h-4 w-4" />
-                  지금 알림 보내기
+                  지금 전송
                 </Button>
               </div>
             </DialogContent>

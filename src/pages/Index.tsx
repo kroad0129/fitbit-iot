@@ -11,11 +11,9 @@ import axios from "axios";
 
 const handleFitbitLogin = async () => {
   try {
-    // const response = await axios.get("/api/fitbit/auth-url");
     const response = await axios.get("http://localhost:4000/api/fitbit/auth-url");
     const authUrl = response.data.url;
-    console.log(authUrl);
-    window.location.href = authUrl; // Fitbit 로그인 페이지로 이동
+    window.location.href = authUrl;
   } catch (error) {
     console.error("Fitbit 인증 URL 요청 실패:", error);
     toast({
@@ -25,7 +23,6 @@ const handleFitbitLogin = async () => {
     });
   }
 };
-
 
 const MonitoringContent = () => {
   const { addData, clearHistory } = useMonitoring();
@@ -39,7 +36,6 @@ const MonitoringContent = () => {
   });
   const [fitbitUser, setFitbitUser] = useState(null);
 
-  // Fitbit 로그인 상태 확인
   useEffect(() => {
     const checkFitbitLogin = async () => {
       try {
@@ -47,29 +43,14 @@ const MonitoringContent = () => {
         if (response.data.profile?.user?.displayName) {
           setFitbitUser(response.data.profile.user.displayName);
         }
-      } catch (error) {
-        console.log("Fitbit 로그인 필요");
-        setFitbitUser(null);
-      }
-      
 
-      try {
-        // Fitbit 데이터 가져오기
-        const fitbitRes = await axios.get("http://localhost:4000/api/fitbit/data");
-        const fitbitData = fitbitRes.data;
-        console.log(fitbitData);
-        // Fitbit 데이터를 상태에 반영
+        const fitbitData = response.data;
         setData(prevData => ({
           ...prevData,
           heartRate: fitbitData.heartRate?.["activities-heart"]?.[0]?.value?.restingHeartRate || prevData.heartRate,
         }));
-
-        // Fitbit 사용자 정보가 있으면 상태 업데이트
-        if (fitbitData.profile?.user?.displayName) {
-          setFitbitUser(fitbitData.profile.user.displayName);
-        }
       } catch (error) {
-        console.error("Fitbit 데이터 갱신 실패:", error.response?.data || error.message);
+        console.log("Fitbit 로그인 필요 또는 데이터 오류:", error);
         setFitbitUser(null);
       }
     };
@@ -77,57 +58,46 @@ const MonitoringContent = () => {
     checkFitbitLogin();
   }, []);
 
-  // WebSocket 연결
+  // 주기적 센서 데이터 가져오기 (IoT + API Gateway)
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:4000');
+    const fetchSensorData = async () => {
+      try {
+        const res = await fetch("https://uug2wtk3g0.execute-api.ap-northeast-2.amazonaws.com/monitoring/sensor");
+        const rawData = await res.json();
+        if (!Array.isArray(rawData) || rawData.length === 0) return;
 
-    ws.onopen = () => {
-      console.log('WebSocket 연결됨');
-    };
+        const latest = rawData[0];
+        const updated = {
+          temperature: Number(latest.temperature),
+          humidity: Number(latest.humidity),
+          gasDetection: latest.gas_detected === 1 ? "위험" : "안전",
+          heartRate: data.heartRate,
+          stressLevel: data.stressLevel
+        };
 
-    ws.onmessage = async (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'sensor_update') {
-        // 새로운 센서 데이터로 상태 업데이트
-        setData(prevData => ({
-          ...prevData,
-          temperature: message.data.temperature,
-          humidity: message.data.humidity,
-          gasDetection: message.data.gasLevel > 70 ? "위험" : "안전"          
-        }));
-        
-        // 알림 표시
+        setData(updated);
+        addData(updated);
+        setRefreshCount(prev => prev + 1);
+
         toast({
           title: "센서 데이터 업데이트",
-          description: `온도: ${message.data.temperature}°C, 습도: ${message.data.humidity}%, 가스 레벨: ${message.data.gasLevel}`,
+          description: `온도: ${updated.temperature}°C, 습도: ${updated.humidity}%, 가스: ${updated.gasDetection}`,
           duration: 3000,
         });
-
-        // 모니터링 데이터 추가
-        addData(message.data);
-        setRefreshCount(prev => prev + 1);
+      } catch (err) {
+        console.error("센서 데이터 가져오기 실패:", err);
       }
     };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket 오류:', error);
-    };
+    fetchSensorData();
+    const interval = setInterval(fetchSensorData, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-    ws.onclose = () => {
-      console.log('WebSocket 연결 종료');
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [addData]);
-
-  // 히스토리 초기화
   useEffect(() => {
     clearHistory();
   }, []);
 
-  // Check for abnormal values
   const checkForAbnormalValues = (data) => {
     const reasons = [];
     if (data.temperature > 30 || data.temperature < 15) reasons.push('온도');
@@ -171,9 +141,9 @@ const MonitoringContent = () => {
 
         <div className="grid grid-cols-1 gap-8">
           <MonitoringPanel data={data} />
-          
           {isAbnormal && (
-            <AlertSystem 
+            <AlertSystem
+              key={reasons.join("-")}
               abnormalData={{
                 ...data,
                 abnormal: true,
@@ -181,7 +151,6 @@ const MonitoringContent = () => {
               }}
             />
           )}
-
           <MessageHistory />
           <MonitoringHistory />
         </div>

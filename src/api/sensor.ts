@@ -18,7 +18,7 @@ export async function fetchSensorData() {
         temperature: Number(item.temperature) || 0,
         humidity: Number(item.humidity) || 0,
         gasDetection: item.gas_detected === 1 ? "위험" : "안전",
-        heartRate: 70,
+        heartRate: Number(item.heart_rate) || 70,
         stressLevel: 35
     };
 }
