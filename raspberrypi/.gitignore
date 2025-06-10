@@ -6,3 +6,6 @@ config.json
 *.key
 *.crt
 raspberrypi/config.json
+raspberrypi/*.key
+raspberrypi/*.crt
+raspberrypi/*.pem
