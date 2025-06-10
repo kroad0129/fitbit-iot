@@ -5,3 +5,4 @@ src/logs/
 config.json
 *.key
 *.crt
+raspberrypi/config.json
