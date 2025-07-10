@@ -39,6 +39,16 @@
 
 ---
 
+  ## 스크린샷
+
+<p align="center">
+  <img src="./assets/1.png" width="500" alt="1"/>
+  <img src="./assets/2.png" width="500" alt="2"/>
+  <img src="./assets/3.png" width="500" alt="3"/>
+</p>
+
+---
+
 ## 📁 폴더 구조
 
 ```plaintext
@@ -91,15 +101,6 @@ fitbit-iot/
 
 ---
 
-## 스크린샷
-
-<p align="center">
-  <img src="./assets/1.png" width="500" alt="1"/>
-  <img src="./assets/2.png" width="500" alt="2"/>
-  <img src="./assets/3.png" width="500" alt="3"/>
-</p>
-
----
 
 ## 배운 점 & 느낀 점
 
