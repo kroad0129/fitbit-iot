@@ -94,10 +94,9 @@ fitbit-iot/
 ## 스크린샷
 
 <p align="center">
-  <img src="./assets/pi-monitor.png" width="220" alt="라즈베리파이 센서화면"/>
-  <img src="./assets/iotcore-console.png" width="220" alt="IoT Core 콘솔"/>
-  <img src="./assets/lambda-graph.png" width="220" alt="Lambda 처리 흐름"/>
-  <img src="./assets/web-ui.png" width="220" alt="React Web UI"/>
+  <img src="./assets/1.png" width="500" alt="1"/>
+  <img src="./assets/2.png" width="500" alt="2"/>
+  <img src="./assets/3.png" width="500" alt="3"/>
 </p>
 
 ---
